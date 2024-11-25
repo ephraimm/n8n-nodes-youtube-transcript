@@ -108,10 +108,26 @@ export class YoutubeTranscriptNode implements INodeType {
 				await page.waitForSelector('#segments-container', { timeout: 10_000 });
 
 				const transcript = await page.evaluate(() => {
-					return Array.from(document.querySelectorAll('#segments-container yt-formatted-string'))
-						.map((element) => element.textContent?.trim() || '')
-						.filter((text) => text !== '');
+					return Array.from(document.querySelectorAll('#segments-container ytd-transcript-segment-renderer'))
+						.map((segment) => {
+							const timestamp = segment.querySelector('.segment-timestamp')?.textContent?.trim() || '';
+							const text = segment.querySelector('.segment-text')?.textContent?.trim() || '';
+							return { timestamp, text };
+						})
+						.filter((entry) => entry.text !== '' && entry.timestamp !== '');
 				});
+
+				// <ytd-transcript-segment-renderer class="style-scope ytd-transcript-segment-list-renderer active" rounded-container=""><!--css-build:shady--><!--css-build:shady--><div class="segment style-scope ytd-transcript-segment-renderer" role="button" tabindex="0" aria-label="3 seconds one but two groundbreaking Solutions so">
+				// <div class="segment-start-offset style-scope ytd-transcript-segment-renderer" tabindex="-1" aria-hidden="true">
+				// 	<div class="segment-timestamp style-scope ytd-transcript-segment-renderer">
+				// 	0:03
+				// 	</div>
+				// </div>
+				// <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
+				// <yt-formatted-string class="segment-text style-scope ytd-transcript-segment-renderer" aria-hidden="true" tabindex="-1">one but two groundbreaking Solutions so</yt-formatted-string>
+				// <dom-if restamp="" class="style-scope ytd-transcript-segment-renderer"><template is="dom-if"></template></dom-if>
+				// </div>
+				// </ytd-transcript-segment-renderer>
 
 				return transcript;
 			} catch (error) {
@@ -165,11 +181,12 @@ export class YoutubeTranscriptNode implements INodeType {
 
 				let text = '';
 				for (const line of transcript) {
-					text += line + ' ';
+					text += `[${line.timestamp}] ${line.text} `;
 				}
 				returnData.push({
 					json: {
 						youtubeId: youtubeId,
+						// transcript: transcript,
 						text: text,
 					},
 					pairedItem: { item: itemIndex },
